@@ -1,7 +1,6 @@
 """All wizard pages for WinFlash Pro."""
 
 import os
-import webbrowser
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
     QFileDialog, QFrame, QSizePolicy, QSpacerItem, QTextEdit
@@ -156,7 +155,7 @@ class USBSelectPage(QWidget):
         lay.setSpacing(0)
 
         hdr = QHBoxLayout()
-        hdr.addWidget(label("💾  Выберите USB накопитель", 18, bold=True))
+        hdr.addWidget(label("💾  Выберите USB флешку", 18, bold=True))
         hdr.addStretch()
         refresh_btn = GlowButton("⟳  Обновить", self, primary=False, small=True)
         refresh_btn.setFixedWidth(120)
@@ -180,19 +179,6 @@ class USBSelectPage(QWidget):
         self._list_layout.setContentsMargins(0, 0, 8, 0)
         scroll.setWidget(self._list_container)
         lay.addWidget(scroll, 1)
-        lay.addSpacing(16)
-
-        # ISO selector
-        iso_panel = GlassPanel(self, radius=12)
-        iso_lay = QHBoxLayout(iso_panel)
-        iso_lay.setContentsMargins(18, 12, 18, 12)
-        self._iso_label = label("📁  ISO файл: не выбран", 10, muted=True)
-        iso_lay.addWidget(self._iso_label, 1)
-        iso_btn = GlowButton("Выбрать ISO", self, primary=False, small=True)
-        iso_btn.setFixedWidth(130)
-        iso_btn.clicked.connect(self._pick_iso)
-        iso_lay.addWidget(iso_btn)
-        lay.addWidget(iso_panel)
         lay.addSpacing(20)
 
         nav = QHBoxLayout()
@@ -207,21 +193,6 @@ class USBSelectPage(QWidget):
         self._next_btn.clicked.connect(self._on_next)
         nav.addWidget(self._next_btn)
         lay.addLayout(nav)
-
-        self._iso_path = None
-
-    def _pick_iso(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Выберите Windows ISO", "",
-            "ISO образы (*.iso);;Все файлы (*)"
-        )
-        if path:
-            self._iso_path = path
-            name = os.path.basename(path)
-            size_gb = os.path.getsize(path) / 1e9
-            self._iso_label.setText(f"📁  {name}  ({size_gb:.1f} ГБ)")
-            self._iso_label.setStyleSheet("color: #10b981; background: transparent;")
-            self._check_next()
 
     def refresh_drives(self):
         # Clear existing
@@ -257,9 +228,7 @@ class USBSelectPage(QWidget):
         self._check_next()
 
     def _check_next(self):
-        self._next_btn.setEnabled(
-            self._selected_drive is not None and self._iso_path is not None
-        )
+        self._next_btn.setEnabled(self._selected_drive is not None)
 
     def _on_next(self):
         self.next_clicked.emit()
@@ -267,10 +236,6 @@ class USBSelectPage(QWidget):
     @property
     def selected_drive(self):
         return self._selected_drive
-
-    @property
-    def iso_path(self):
-        return self._iso_path
 
 
 class _DriveCard(GlassCard):
@@ -370,17 +335,19 @@ class WindowsSelectPage(QWidget):
         lay.addWidget(grid_widget, 1)
         lay.addSpacing(20)
 
-        # Download / ISO hint panel
+        # Info hint panel
         dl_panel = GlassPanel(self, radius=10)
         dl_lay = QHBoxLayout(dl_panel)
         dl_lay.setContentsMargins(16, 10, 16, 10)
-        dl_lay.addWidget(label("💡  Уже есть ISO? Выберите его через кнопку «Выбрать ISO» на шаге 2.", 10, muted=True), 1)
-        ms_btn = GlowButton("Microsoft.com →", self, primary=False, small=True)
-        ms_btn.setFixedWidth(160)
-        ms_btn.clicked.connect(self._open_microsoft)
-        dl_lay.addWidget(ms_btn)
+        dl_lay.addWidget(label(
+            "💡  Выберите версию Windows и нажмите «Скачать и записать» — "
+            "файл загрузится напрямую с серверов Microsoft (~5 ГБ).",
+            10, muted=True
+        ), 1)
         lay.addWidget(dl_panel)
         lay.addSpacing(16)
+
+        self._iso_path = None
 
         nav = QHBoxLayout()
         back = GlowButton("← Назад", self, primary=False)
@@ -388,18 +355,19 @@ class WindowsSelectPage(QWidget):
         back.clicked.connect(self.back_clicked)
         nav.addWidget(back)
         nav.addStretch()
-        # Auto-download button
-        self._dl_btn = GlowButton("⬇  Скачать автоматически", self, primary=False)
-        self._dl_btn.setFixedWidth(230)
+        # Secondary: user already has a file
+        self._next_btn = GlowButton("📁  У меня есть файл...", self, primary=False)
+        self._next_btn.setFixedWidth(210)
+        self._next_btn.setEnabled(False)
+        self._next_btn.clicked.connect(self._pick_and_proceed)
+        nav.addWidget(self._next_btn)
+        nav.addSpacing(8)
+        # Primary: auto-download
+        self._dl_btn = GlowButton("⬇  Скачать и записать", self, primary=True)
+        self._dl_btn.setFixedWidth(220)
         self._dl_btn.setEnabled(False)
         self._dl_btn.clicked.connect(self._on_download)
         nav.addWidget(self._dl_btn)
-        nav.addSpacing(8)
-        self._next_btn = GlowButton("У меня есть ISO →", self, primary=True)
-        self._next_btn.setFixedWidth(190)
-        self._next_btn.setEnabled(False)
-        self._next_btn.clicked.connect(self.next_clicked)
-        nav.addWidget(self._next_btn)
         lay.addLayout(nav)
 
     def _select(self, win_version: dict, card: "_WinCard"):
@@ -407,22 +375,29 @@ class WindowsSelectPage(QWidget):
         for cid, c in self._cards.items():
             c.selected = (cid == win_version["id"])
         self.version_selected.emit(win_version)
-        self._next_btn.setEnabled(True)
         self._dl_btn.setEnabled(True)
+        self._next_btn.setEnabled(True)
 
     def _on_download(self):
         if self._selected:
             self.download_clicked.emit(self._selected)
 
-    def _open_microsoft(self):
-        if self._selected:
-            webbrowser.open(self._selected["download_url"])
-        else:
-            webbrowser.open("https://www.microsoft.com/software-download/windows11")
+    def _pick_and_proceed(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Выберите файл установки Windows", "",
+            "Файлы установки Windows (*.iso);;Все файлы (*)"
+        )
+        if path:
+            self._iso_path = path
+            self.next_clicked.emit()
 
     @property
     def selected_version(self):
         return self._selected
+
+    @property
+    def iso_path(self):
+        return self._iso_path
 
 
 class _WinCard(GlassCard):
