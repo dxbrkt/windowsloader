@@ -147,7 +147,7 @@ class MainWindow(QWidget):
         self._page_options.next_clicked.connect(self._start_install)
         self._page_options.back_clicked.connect(lambda: self._go_to(self._IDX["windows"]))
         self._page_progress.done_clicked.connect(lambda: self._go_to(self._IDX["done"]))
-        self._page_done.restart_clicked.connect(lambda: self._go_to(self._IDX["welcome"]))
+        self._page_done.restart_clicked.connect(self._restart)
 
     def _make_titlebar(self) -> QWidget:
         bar = QWidget(self)
@@ -220,9 +220,12 @@ class MainWindow(QWidget):
         self._downloaded_iso = iso_path
         self._go_to(self._IDX["options"])
 
+    def _restart(self):
+        self._downloaded_iso = None
+        self._go_to(self._IDX["welcome"])
+
     def _start_install(self):
-        # Use downloaded ISO if available, otherwise use manually selected
-        iso = getattr(self, "_downloaded_iso", None) or self._page_usb.iso_path
+        iso = getattr(self, "_downloaded_iso", None) or self._page_windows.iso_path
         usb = self._page_usb.selected_drive
         bypasses = self._page_options.bypass_options
 
