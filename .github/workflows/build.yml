@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -18,8 +21,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          pip install pyinstaller PyQt6 PyQt6-Qt6 PyQt6-sip psutil requests
+        run: pip install pyinstaller PyQt6 PyQt6-Qt6 PyQt6-sip psutil requests
 
       - name: Build .exe
         run: >
@@ -56,5 +58,4 @@ jobs:
             2. Запусти от имени администратора
             3. Python и другие программы **не нужны**
           files: dist/WinFlashPro.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
