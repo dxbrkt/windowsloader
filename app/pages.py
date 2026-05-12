@@ -34,32 +34,12 @@ class WelcomePage(QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._setup_ui()
-        # Animate dots timer
-        self._dot_timer = QTimer(self)
-        self._dot_timer.timeout.connect(self._animate)
-        self._dot_timer.start(80)
-        self._angle = 0
 
     def _setup_ui(self):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(60, 50, 60, 50)
         lay.setSpacing(0)
 
-        # Logo area
-        logo_lbl = QLabel("⚡ WinFlash Pro", self)
-        logo_lbl.setFont(QFont("Segoe UI", 32, QFont.Weight.Bold))
-        logo_lbl.setStyleSheet(
-            "color: transparent;"
-            "background: qlineargradient(x1:0,y1:0,x2:1,y2:0,"
-            "stop:0 #6366f1, stop:1 #06b6d4);"
-            "-webkit-background-clip: text;"
-        )
-        logo_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # Fallback gradient text via QPalette workaround — just color it
-        logo_lbl.setStyleSheet("background: transparent;")
-        logo_lbl.setFont(QFont("Segoe UI", 34, QFont.Weight.Bold))
-
-        # Use a custom-drawn gradient title widget
         title_widget = _GradientTitle("⚡  WinFlash Pro", self)
         lay.addWidget(title_widget, 0, Qt.AlignmentFlag.AlignCenter)
         lay.addSpacing(10)
@@ -106,11 +86,6 @@ class WelcomePage(QWidget):
         lay.addWidget(hint)
         lay.addStretch()
 
-    def _animate(self):
-        self._angle = (self._angle + 2) % 360
-        self.update()
-
-
 class _GradientTitle(QWidget):
     def __init__(self, text, parent=None):
         super().__init__(parent)
@@ -122,17 +97,26 @@ class _GradientTitle(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+
         font = QFont("Segoe UI", 30, QFont.Weight.Bold)
-        p.setFont(font)
+        from PyQt6.QtGui import QFontMetrics
+        fm = QFontMetrics(font)
+        text_w = fm.horizontalAdvance(self._text)
+        text_h = fm.height()
+        x = (self.width() - text_w) / 2
+        y = (self.height() + text_h) / 2 - fm.descent()
+
+        text_path = QPainterPath()
+        text_path.addText(x, y, font, self._text)
+
         g = QLinearGradient(0, 0, self.width(), 0)
         g.setColorAt(0, QColor(99, 102, 241))
         g.setColorAt(0.5, QColor(168, 85, 247))
         g.setColorAt(1, QColor(6, 182, 212))
-        p.setPen(QPen(QColor(99, 102, 241)))
-        p.setBrush(QBrush(g))
-        # Draw text with gradient
-        p.setPen(QColor(200, 200, 255))
-        p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._text)
+
+        p.setClipPath(text_path)
+        p.fillRect(self.rect(), QBrush(g))
 
 
 # ── PAGE 2: USB Selection ─────────────────────────────────────────────────────
@@ -246,7 +230,7 @@ class _DriveCard(GlassCard):
         lay.setContentsMargins(18, 14, 18, 14)
         lay.setSpacing(14)
 
-        icon = QLabel("🖲️")
+        icon = QLabel("🔌")
         icon.setFont(QFont("Segoe UI Emoji", 24))
         icon.setStyleSheet("background: transparent;")
         icon.setFixedWidth(36)
@@ -431,8 +415,8 @@ class _WinCard(GlassCard):
             badge = QLabel(feat)
             badge.setFont(QFont("Segoe UI", 8))
             badge.setStyleSheet(
-                "color: #94a3b8; background: rgba(255,255,255,0.06);"
-                "padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);"
+                "color: #94a3b8; background: rgba(255,255,255,15);"
+                "padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,30);"
             )
             feat_lay.addWidget(badge)
         feat_lay.addStretch()
@@ -592,8 +576,8 @@ class ProgressPage(QWidget):
         self._log.setReadOnly(True)
         self._log.setMaximumHeight(180)
         self._log.setStyleSheet(
-            "QTextEdit { background: rgba(0,0,0,0.35); color: #94a3b8; "
-            "border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; "
+            "QTextEdit { background: rgba(0,0,0,89); color: #94a3b8; "
+            "border: 1px solid rgba(255,255,255,25); border-radius: 10px; "
             "padding: 10px; font-family: 'Consolas', monospace; font-size: 10px; }"
         )
         log_col.addWidget(self._log)
@@ -864,8 +848,8 @@ class DownloadPage(QWidget):
         self._log.setReadOnly(True)
         self._log.setMaximumHeight(130)
         self._log.setStyleSheet(
-            "QTextEdit { background: rgba(0,0,0,0.3); color: #64748b; "
-            "border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; "
+            "QTextEdit { background: rgba(0,0,0,76); color: #64748b; "
+            "border: 1px solid rgba(255,255,255,15); border-radius: 8px; "
             "padding: 8px; font-family: 'Consolas', monospace; font-size: 9px; }"
         )
         prog_lay.addWidget(self._log)
@@ -1043,8 +1027,8 @@ class _GuideDialog:
         outer = QWidget(dlg)
         outer.setGeometry(0, 0, 520, 420)
         outer.setStyleSheet(
-            "background: rgba(13,17,35,0.97); border-radius: 16px; "
-            "border: 1px solid rgba(255,255,255,0.12);"
+            "background: rgba(13,17,35,247); border-radius: 16px; "
+            "border: 1px solid rgba(255,255,255,30);"
         )
         lay = QVBoxLayout(outer)
         lay.setContentsMargins(24, 20, 24, 20)
@@ -1055,12 +1039,12 @@ class _GuideDialog:
         txt.setReadOnly(True)
         txt.setPlainText(self._text)
         txt.setStyleSheet(
-            "background: rgba(0,0,0,0.3); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.08);"
+            "background: rgba(0,0,0,76); color: #cbd5e1; border: 1px solid rgba(255,255,255,20);"
             "border-radius: 10px; padding: 12px; font-family: 'Consolas', monospace; font-size: 11px;"
         )
         lay.addWidget(txt, 1)
 
-        close_btn = GlowButton("Закрыть", primary=False, small=True)
+        close_btn = GlowButton("Закрыть", outer, primary=False, small=True)
         close_btn.setFixedWidth(120)
         close_btn.clicked.connect(dlg.accept)
         lay.addWidget(close_btn, 0, Qt.AlignmentFlag.AlignCenter)

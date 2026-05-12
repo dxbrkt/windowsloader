@@ -154,27 +154,27 @@ class GlowButton(QPushButton):
         path = QPainterPath()
         path.addRoundedRect(0, 0, r.width(), r.height(), 12, 12)
 
+        disabled = not self.isEnabled()
+
         if self._primary:
-            alpha = 230 if self._hovered else 200
+            alpha = 70 if disabled else (230 if self._hovered else 200)
             g = QLinearGradient(0, 0, r.width(), r.height())
             g.setColorAt(0, QColor(99, 102, 241, alpha))
             g.setColorAt(1, QColor(6, 182, 212, alpha))
             p.fillPath(path, QBrush(g))
-            border_c = QColor(255, 255, 255, 60 if self._hovered else 40)
+            border_c = QColor(255, 255, 255, 20 if disabled else (60 if self._hovered else 40))
         else:
-            alpha = 35 if self._hovered else 18
+            alpha = 8 if disabled else (35 if self._hovered else 18)
             p.fillPath(path, QBrush(QColor(255, 255, 255, alpha)))
-            border_c = QColor(255, 255, 255, 70 if self._hovered else 40)
+            border_c = QColor(255, 255, 255, 20 if disabled else (70 if self._hovered else 40))
 
         p.setPen(QPen(border_c, 1))
         p.drawPath(path)
 
-        p.setPen(C_TEXT)
+        text_alpha = 60 if disabled else 230
+        p.setPen(QColor(255, 255, 255, text_alpha))
         p.setFont(self.font())
         p.drawText(r, Qt.AlignmentFlag.AlignCenter, self.text())
-
-        if not self.isEnabled():
-            p.fillPath(path, QBrush(QColor(0, 0, 0, 100)))
 
 
 # ── ToggleSwitch ─────────────────────────────────────────────────────────────
